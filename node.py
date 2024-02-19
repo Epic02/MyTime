@@ -11,3 +11,5 @@ class Node:
         self.max_out_arrival = 0.0 # arrival time at the output of this gate using max on (inp_arrival +cell_delay)
         self.Tau_out = 0.0 # Resulting output slew
         self.visit_count = 0
+        self.inp_count = 0
+        self.all_inp_vstd=False
