@@ -9,6 +9,7 @@
 **Commands:**
 
 **pip3 install -r requirements.txt**
+
 **python3.7 sta_parser.py --read_ckt <benchmark_file>**
 
 (Parses the benchmark file to create a graph representation of the circuit)
