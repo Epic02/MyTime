@@ -33,7 +33,7 @@ nodes={}            # Holds all the nodes/gates in the circuit
 primary_nodes=[]    # Holds the primary node - nodes which have all primary inputs
 fan_queue=[]        # Keeps track of each gate/node that needs to processed while traversing the graph
 wires=[]
-ckt_dtls =  open("ckt_details.txt", "w")
+
 
 
 def read_circuit(path):
@@ -249,6 +249,8 @@ def read_nldm(path, d_or_s):
 
 
 if args.read_ckt:
+    global ckt_dtls
+    ckt_dtls =  open("ckt_details.txt", "w")
     read_circuit(path)
 elif args.delays and args.read_nldm:
     read_nldm(path, True)
