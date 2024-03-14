@@ -21,3 +21,7 @@
 **python3.7 sta_parser.py --slews --read_nldm <liberty_file>** 
 
 (Parses the given liberty file and outputs, output slews and the corresponding capacitances and input slews of the gates)
+
+**python3.7 main.py --read_ckt <benchmark_file> --read_nldm <liberty_file>**
+
+(Parses the benchmark file and outputs the slacks and critical path of the given combinational logic)
