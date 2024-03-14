@@ -22,9 +22,11 @@ if args.read_ckt and args.read_nldm:
                    PO=conv.PO,
                    wires=conv.wires,
                    liberty=conv.lib_file,
-                   prim_node=conv.primary_nodes)
+                   prim_node=conv.primary_nodes,
+                   ff=conv.ff_node)
     with open("ckt_traversal.txt", mode="w", encoding="utf-8") as ckt_trav:
         sta_engine.forward_trav()
+        #print("delay: "+str(sta_engine.get_ckt_dly()))
         sta_engine.backward_trav(sta_engine.get_ckt_dly())
         sta_engine.prnt_n_write(file=ckt_trav,txt="-------------------------")
         sta_engine.prnt_n_write(file=ckt_trav,txt="Circuit delay: "+str(sta_engine.get_ckt_dly_ps())+"ps\n")

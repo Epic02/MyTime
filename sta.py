@@ -1,6 +1,6 @@
 class Sta:
     """Perform sta"""
-    def __init__(self,graph,PI,PO,liberty,prim_node,wires):
+    def __init__(self,graph,PI,PO,liberty,prim_node,wires,ff):
         self.graph=graph
         self.PI=PI
         self.PO=PO
@@ -10,23 +10,28 @@ class Sta:
         self.prim_node=prim_node
         self.critical_path=[]
         self.wires=wires
+        self.ff=ff
+        self.crtcl_path_q=[]
 
     def forward_trav(self):
         """Perform topological traversal from all primary nodes"""
-        print("in front"+str(len(self.prim_node)))
+        #print("in front"+str(self.prim_node)+" "+str(self.PI))
         for i,inp in enumerate(self.prim_node):
             #print("Node "+str(i)+": "+str(inp.outputs)+" "+str(inp.outname))
+            #print("in front"+str(inp.outname))
             self.queue.append(inp.outname)
             self.topolgcl_trav1()
     def backward_trav(self,delay):
         """Perform backward topological traversal"""
-        print("in back")
+        #print("in back")
         for outp in self.PO:
             self.queue.append(outp)
             self.topolgcl_trav2(delay=delay)
     def topolgcl_trav2(self,delay):
         """Perform backward trav"""
+        
         while len(self.queue)>0:
+            #i=i+1
             curr_node=self.graph[self.queue.pop(0)]
             outputs=curr_node.outputs
             RAT=curr_node.RAT
@@ -59,49 +64,65 @@ class Sta:
             #    for i in curr_node.inputs:
             #        if not i == "INP":
             #            self.queue.append(i)
+        #print("trav2: "+str(i))
 
 
     def topolgcl_trav1(self):
         """Perform topological traversal"""
+        #i=0
         while len(self.queue)>0:
+            #print("queue: "+str(self.queue))
+            #i=i+1
             curr_node=self.graph[self.queue.pop(0)]
-            inputs=curr_node.inputs
-            tau_in=curr_node.Tau_in
-            for pin in  inputs:
-                if pin in self.PI:
-                    tau_in[pin]=0.002
-                    curr_node.inp_arrival[pin]=0
-                    #print("in prim")
-            cload=self.get_cload(curr_node)
-            #print("cload = "+str(cload))
-            if len(inputs) == len(tau_in):
-                
-                #print(curr_node.outname)
-                for pin in tau_in.keys():
-                    delay=self.get_dly_tauout(tau_in[pin],cload,curr_node.name,True,len(curr_node.inputs))
-                    curr_node.outp_arrival[pin]=(delay+curr_node.inp_arrival[pin],delay)
-                #print(curr_node.outp_arrival)
-                tau_max,curr_node.max_out_arrival,curr_node.delay=self.get_max(curr_node.outp_arrival)
-                #print(curr_node.max_outp_arrival)
-                #tau_max=self.get_max(curr_node.outp_arrival)[0]
-                curr_node.Tau_out=self.get_dly_tauout(tau_in[tau_max],cload,curr_node.name,False,len(curr_node.inputs))
+            #print(curr_node.name)
+            if not curr_node.name == "DFF":
+                #print("DFFF" + curr_node.outname)
+                inputs=curr_node.inputs
+                tau_in=curr_node.Tau_in
+                for pin in  inputs:
+                    if pin in self.PI or pin in self.ff:
+                        tau_in[pin]=0.002
+                        curr_node.inp_arrival[pin]=0
+                        #print("in prim")
+                cload=self.get_cload(curr_node)
+                #print("cload = "+str(cload))
+                if len(inputs) == len(tau_in):
+                    
+                    #print("in if: "+curr_node.outname+" "+str(curr_node.outputs))
+                    for pin in tau_in.keys():
+                        delay=self.get_dly_tauout(tau_in[pin],cload,curr_node.name,True,len(curr_node.inputs))
+                        curr_node.outp_arrival[pin]=(delay+curr_node.inp_arrival[pin],delay)
+                    #print(curr_node.outp_arrival)
+                    tau_max,curr_node.max_out_arrival,curr_node.delay=self.get_max(curr_node.outp_arrival)
+
+                    #print(curr_node.max_outp_arrival)
+                    #tau_max=self.get_max(curr_node.outp_arrival)[0]
+                    curr_node.Tau_out=self.get_dly_tauout(tau_in[tau_max],cload,curr_node.name,False,len(curr_node.inputs))
+                    for o in curr_node.outputs:
+                        if not o =="OUTP":
+                            self.graph[o].Tau_in[curr_node.outname]=curr_node.Tau_out
+                            self.graph[o].inp_arrival[curr_node.outname]=curr_node.max_out_arrival
+                            if o not in self.queue:
+                                self.queue.append(o)
+                #if len(self.queue)==0:
+                #    print("last node: "+curr_node.outname+" "+str(curr_node.max_out_arrival)+" "+str(curr_node.inputs))
+            else:
                 for o in curr_node.outputs:
-                    if not o =="OUTP":
-                        self.graph[o].Tau_in[curr_node.outname]=curr_node.Tau_out
-                        self.graph[o].inp_arrival[curr_node.outname]=curr_node.max_out_arrival
-                        if o not in self.queue:
-                            self.queue.append(o)
+                        if not o =="OUTP":
+                            if o not in self.queue:
+                                self.queue.append(o)
             #else:
             #    for o in curr_node.outputs:
             #        if not o =="OUTP":
             #            self.queue.append(o)
+        #print("trav1 :"+str(i))
 
     def get_cload(self,node):
         """Calculates the output load capacitance"""
         cload=0
         #print(node.outputs)
         for o in node.outputs:
-            if o=="OUTP":
+            if o=="OUTP" or self.graph[o].name=="DFF":
                 cload=cload+(4*float(self.liberty["INV_X1"]["capacitance"]))
             else:
                 #print()
@@ -116,10 +137,16 @@ class Sta:
         slw_indx2=0
         cap_indx2=0
         for i,inps in enumerate(inp_slews):
+            if i==len(inp_slews)-1:
+                slw_indx2=i
+                break
             if tau<float(inps):
                 slw_indx2=i
                 break
         for i,c_load in enumerate(load_cap):
+            if i==len(load_cap)-1:
+                cap_indx2=i
+                break
             if c<float(c_load):
                 cap_indx2=i
                 break
@@ -135,6 +162,7 @@ class Sta:
         d21=float(delays[slw_indx2][cap_indx1])*multplr
         d22=float(delays[slw_indx2][cap_indx2])*multplr
         d=((d11*(C2-c)*(tau2-tau))+(d12*(c-C1)*(tau2-tau))+(d21*(C2-c)*(tau-tau1))+(d22*(c-C1)*(tau-tau1)))/((C2-C1)*(tau2-tau1))
+        #print(str(d))
         return d
 
     def get_max(self,delays):
@@ -214,6 +242,8 @@ class Sta:
 
     def node_name(self,name):
         """Provides exact gate names for the liberty file"""
+        #if name == "DFF":
+            #print("DFFF" + name)
         if name == "INV" or name == "NOT":
             return "INV_X1"
         elif name in ["NAND","XOR","OR","AND","NOR"]:

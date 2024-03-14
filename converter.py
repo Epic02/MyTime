@@ -14,6 +14,7 @@ class Converter:
         self.wires=[]
         self.print=print
         self.lib_file ={}
+        self.ff_node=[]
 
 
     def read_circuit(self,path):
@@ -62,25 +63,39 @@ class Converter:
         equal_to=line.find("=")         #   Get index location of "="
         opn_brckt=line.find("(")        #   Get index location of "("
         clo_brckt=line.find(")")        #   Get index location of ")"
+        node_outname=strp_line[:equal_to].strip()       #   Get the outname from LHS of "="
+        node_name=strp_line[equal_to+1:opn_brckt].strip()
 
-        node=Node()                     #   Instansiate a node
+        #-------------------- Gate counter ----------------------------
+        if node_name not in self.gate_count:                          #   Check if the gate is present in gate count tracker
+            self.gate_count[node_name]=1                              #   If gate not already present create entry with value 1
+        else:                                                         #
+            self.gate_count[node_name]=self.gate_count[node_name]+1   #   If gate present increment the value with 1
+        #--------------------------------------------------------------
+
         
-        node.name=strp_line[equal_to+1:opn_brckt].strip()       #   Get type of node from whatever lies between "=" and "(" and strip whitespaces
-        if node.name not in self.gate_count:                         #   Check if the gate is present in gate count tracker
-            self.gate_count[node.name]=1                             #   If gate not already present create entry with value 1
+        if node_outname in self.nodes:
+            node=self.nodes[node_outname]
         else:
-            self.gate_count[node.name]=self.gate_count[node.name]+1       #   If gate present increment the value with 1
-        node.outname=strp_line[:equal_to].strip()               #   Get the outname from LHS of "="
+            node=Node(outname=node_outname)
+        node.name=node_name       #   Get type of node from whatever lies between "=" and "(" and strip whitespaces
+        if node_name == "DFF":
+            self.ff_node.append(node_outname)
         inputs=strp_line[opn_brckt+1:clo_brckt].split(",")      #   Get the comma seperated inputs between "(" and ")" and split them using ","
         count = 0
         for ckt_input in inputs:            #   Iterate through all the inputs
             strp_i=ckt_input.strip()        #   Remove whitespaces if any in the start and end
             node.inputs.append(strp_i)          #   Add the input to the inputs list of the node
+            #if strp_i in self.ff_node:      #   Check if the input is a flip flop
+            #    strp_i=self.ff_node[strp_i]
             if strp_i not in self.PI:
                 count = count + 1
                 isPrimary=False         #   If any of the input is not primary input the node/gate will not marked as primary
             if strp_i in self.nodes:
                 self.nodes[strp_i].outputs.append(node.outname)      #   If the input of the current node is output of someothere node add this node
+            else:
+                self.nodes[strp_i]=Node(outname=strp_i)
+                self.nodes[strp_i].outputs.append(node_outname)
                                                                     #   to the ouputs list of the node which is the input for this node
         node.inp_count = count
         if node.outname in self.PO:
